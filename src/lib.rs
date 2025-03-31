@@ -130,21 +130,21 @@ impl Combiner for XWing {
 }
 
 pub struct DecapsulationKey {
-    t: x25519_dalek::StaticSecret,
-    pq: <MlKem768 as KemCore>::DecapsulationKey,
-    ek: EncapsulationKey,
+    pub t: x25519_dalek::StaticSecret,
+    pub pq: <MlKem768 as KemCore>::DecapsulationKey,
+    pub ek: EncapsulationKey,
 }
 
 #[derive(Clone)]
 pub struct EncapsulationKey {
-    t: x25519_dalek::PublicKey,
-    pq: <MlKem768 as KemCore>::EncapsulationKey,
-    pq_bytes: Encoded<<MlKem768 as KemCore>::EncapsulationKey>,
+    pub t: x25519_dalek::PublicKey,
+    pub pq: <MlKem768 as KemCore>::EncapsulationKey,
+    pub pq_bytes: Encoded<<MlKem768 as KemCore>::EncapsulationKey>,
 }
 
 pub struct Ciphertext {
-    t: x25519_dalek::PublicKey,
-    pq: Array<u8, U1088>,
+    pub t: x25519_dalek::PublicKey,
+    pub pq: Array<u8, U1088>,
 }
 
 type SharedSecret = Output<Sha3_256>;
