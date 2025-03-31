@@ -80,6 +80,7 @@ impl Combiner for Chempat {
     }
 }
 
+// Emulates doing a DHKEM-like derivation for each KEM
 pub struct Dhkem;
 
 impl Combiner for Dhkem {
@@ -105,6 +106,31 @@ impl Combiner for Dhkem {
 
         h.update(input_t);
         h.update(input_pq);
+        h.finalize()
+    }
+}
+
+// Emulates doing DHKEM plus raw ML-KEM, X-Wing style
+pub struct DhkemHalf;
+
+impl Combiner for DhkemHalf {
+    fn combine(
+        ss_t: &[u8],
+        ct_t: &[u8],
+        ek_t: &[u8],
+        ss_pq: &[u8],
+        _ct_pq: &[u8],
+        _ek_pq: &[u8],
+    ) -> SharedSecret {
+        let mut h = Sha3_256::new();
+
+        h.update(ss_t);
+        h.update(ct_t);
+        h.update(ek_t);
+        let input_t = h.finalize_reset();
+
+        h.update(input_t);
+        h.update(ss_pq);
         h.finalize()
     }
 }
@@ -233,6 +259,11 @@ mod test {
     #[test]
     fn dhkem() {
         test_encap_decap::<Dhkem>();
+    }
+
+    #[test]
+    fn dhkem_half() {
+        test_encap_decap::<DhkemHalf>();
     }
 
     #[test]

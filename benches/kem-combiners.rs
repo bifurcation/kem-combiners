@@ -36,6 +36,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_combiner::<KitchenSink>(c, "kitchen_sink");
     bench_combiner::<Chempat>(c, "chempat");
     bench_combiner::<Dhkem>(c, "dhkem");
+    bench_combiner::<DhkemHalf>(c, "dhkem_half");
     bench_combiner::<XWing>(c, "xwing");
 }
 
