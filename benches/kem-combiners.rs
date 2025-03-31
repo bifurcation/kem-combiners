@@ -1,10 +1,10 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use kem_combiners::*;
 
-fn bench_combiner<C: Combiner>(c: &mut Criterion, label: &str) {
+fn bench_combiner<C: Combiner>(c: &mut Criterion, combo: &C, label: &str) {
     let mut rng = rand::thread_rng();
     let (dk, ek) = kem_combiners::generate(&mut rng);
-    let (ct, ss) = kem_combiners::encap::<KitchenSink>(&mut rng, &ek);
+    let (ct, ss) = kem_combiners::encap(combo, &mut rng, &ek);
 
     let ss_t = ss.as_slice();
     let ct_t = ct.t.as_bytes().as_slice();
@@ -15,29 +15,29 @@ fn bench_combiner<C: Combiner>(c: &mut Criterion, label: &str) {
 
     c.bench_function(&format!("{}_raw", label), |b| {
         b.iter(|| {
-            C::combine(ss_t, ct_t, ek_t, ss_pq, ct_pq, ek_pq);
+            combo.combine(ss_t, ct_t, ek_t, ss_pq, ct_pq, ek_pq);
         })
     });
 
     c.bench_function(&format!("{}_encap", label), |b| {
         b.iter(|| {
-            kem_combiners::encap::<C>(&mut rng, &ek);
+            kem_combiners::encap(combo, &mut rng, &ek);
         })
     });
 
     c.bench_function(&format!("{}_decap", label), |b| {
         b.iter(|| {
-            kem_combiners::decap::<C>(&dk, &ct);
+            kem_combiners::decap(combo, &dk, &ct);
         })
     });
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    bench_combiner::<KitchenSink>(c, "kitchen_sink");
-    bench_combiner::<Chempat>(c, "chempat");
-    bench_combiner::<Dhkem>(c, "dhkem");
-    bench_combiner::<DhkemHalf>(c, "dhkem_half");
-    bench_combiner::<XWing>(c, "xwing");
+    bench_combiner(c, &KitchenSink, "kitchen_sink");
+    bench_combiner(c, &Chempat, "chempat");
+    bench_combiner(c, &Dhkem, "dhkem");
+    bench_combiner(c, &DhkemHalf, "dhkem_half");
+    bench_combiner(c, &XWing, "xwing");
 }
 
 criterion_group!(benches, criterion_benchmark);

@@ -20,6 +20,7 @@ use sha3::{digest::Output, Digest, Sha3_256};
 
 pub trait Combiner {
     fn combine(
+        &self,
         ss_t: &[u8],
         ct_t: &[u8],
         ek_t: &[u8],
@@ -33,6 +34,7 @@ pub struct KitchenSink;
 
 impl Combiner for KitchenSink {
     fn combine(
+        &self,
         ss_t: &[u8],
         ct_t: &[u8],
         ek_t: &[u8],
@@ -55,6 +57,7 @@ pub struct Chempat;
 
 impl Combiner for Chempat {
     fn combine(
+        &self,
         ss_t: &[u8],
         ct_t: &[u8],
         ek_t: &[u8],
@@ -85,6 +88,7 @@ pub struct Dhkem;
 
 impl Combiner for Dhkem {
     fn combine(
+        &self,
         ss_t: &[u8],
         ct_t: &[u8],
         ek_t: &[u8],
@@ -115,6 +119,7 @@ pub struct DhkemHalf;
 
 impl Combiner for DhkemHalf {
     fn combine(
+        &self,
         ss_t: &[u8],
         ct_t: &[u8],
         ek_t: &[u8],
@@ -139,6 +144,7 @@ pub struct XWing;
 
 impl Combiner for XWing {
     fn combine(
+        &self,
         ss_t: &[u8],
         ct_t: &[u8],
         ek_t: &[u8],
@@ -195,10 +201,11 @@ pub fn generate(rng: &mut impl CryptoRngCore) -> (DecapsulationKey, Encapsulatio
     (dk, ek)
 }
 
-pub fn encap<C>(rng: &mut impl CryptoRngCore, ek: &EncapsulationKey) -> (Ciphertext, SharedSecret)
-where
-    C: Combiner,
-{
+pub fn encap<C: Combiner>(
+    c: &C,
+    rng: &mut impl CryptoRngCore,
+    ek: &EncapsulationKey,
+) -> (Ciphertext, SharedSecret) {
     let sk_e = x25519_dalek::EphemeralSecret::random_from_rng(&mut *rng);
     let ct_t = x25519_dalek::PublicKey::from(&sk_e);
     let ss_t = sk_e.diffie_hellman(&ek.t);
@@ -206,7 +213,7 @@ where
     let (ct_pq, ss_pq) = ek.pq.encapsulate(&mut *rng).unwrap();
 
     let ct = Ciphertext { t: ct_t, pq: ct_pq };
-    let ss = C::combine(
+    let ss = c.combine(
         ss_t.as_bytes().as_slice(),
         ct.t.as_bytes().as_slice(),
         ek.t.as_bytes().as_slice(),
@@ -217,14 +224,11 @@ where
     (ct, ss)
 }
 
-pub fn decap<C: Combiner>(dk: &DecapsulationKey, ct: &Ciphertext) -> SharedSecret
-where
-    C: Combiner,
-{
+pub fn decap<C: Combiner>(c: &C, dk: &DecapsulationKey, ct: &Ciphertext) -> SharedSecret {
     let ss_t = dk.t.diffie_hellman(&ct.t);
     let ss_pq = dk.pq.decapsulate(&ct.pq).unwrap();
 
-    C::combine(
+    c.combine(
         ss_t.as_bytes().as_slice(),
         ct.t.as_bytes().as_slice(),
         dk.ek.t.as_bytes().as_slice(),
@@ -238,36 +242,36 @@ where
 mod test {
     use super::*;
 
-    fn test_encap_decap<C: Combiner>() {
+    fn test_encap_decap<C: Combiner>(c: &C) {
         let mut rng = rand::thread_rng();
         let (dk, ek) = generate(&mut rng);
-        let (ct, ss_e) = encap::<C>(&mut rng, &ek);
-        let ss_d = decap::<C>(&dk, &ct);
+        let (ct, ss_e) = encap(c, &mut rng, &ek);
+        let ss_d = decap(c, &dk, &ct);
         assert_eq!(ss_e, ss_d);
     }
 
     #[test]
     fn kitchen_sink() {
-        test_encap_decap::<KitchenSink>();
+        test_encap_decap(&KitchenSink);
     }
 
     #[test]
     fn chempat() {
-        test_encap_decap::<Chempat>();
+        test_encap_decap(&Chempat);
     }
 
     #[test]
     fn dhkem() {
-        test_encap_decap::<Dhkem>();
+        test_encap_decap(&Dhkem);
     }
 
     #[test]
     fn dhkem_half() {
-        test_encap_decap::<DhkemHalf>();
+        test_encap_decap(&DhkemHalf);
     }
 
     #[test]
     fn xwing() {
-        test_encap_decap::<XWing>();
+        test_encap_decap(&XWing);
     }
 }
