@@ -43,12 +43,44 @@ impl Combiner for KitchenSink {
         ek_pq: &[u8],
     ) -> SharedSecret {
         let mut h = Sha3_256::new();
+        h.update(ek_t);
+        h.update(ek_pq);
         h.update(ss_t);
         h.update(ct_t);
-        h.update(ek_t);
         h.update(ss_pq);
         h.update(ct_pq);
-        h.update(ek_pq);
+        h.finalize()
+    }
+}
+
+pub struct KitchenSinkPre {
+    prefix: Sha3_256,
+}
+
+impl KitchenSinkPre {
+    pub fn new(ek: &EncapsulationKey) -> Self {
+        let mut prefix = Sha3_256::new();
+        prefix.update(ek.t.as_bytes().as_slice());
+        prefix.update(ek.pq_bytes.as_slice());
+        Self { prefix }
+    }
+}
+
+impl Combiner for KitchenSinkPre {
+    fn combine(
+        &self,
+        ss_t: &[u8],
+        ct_t: &[u8],
+        _ek_t: &[u8],
+        ss_pq: &[u8],
+        ct_pq: &[u8],
+        _ek_pq: &[u8],
+    ) -> SharedSecret {
+        let mut h = self.prefix.clone();
+        h.update(ss_t);
+        h.update(ct_t);
+        h.update(ss_pq);
+        h.update(ct_pq);
         h.finalize()
     }
 }
@@ -78,6 +110,46 @@ impl Combiner for Chempat {
         h.update(ss_t);
         h.update(ss_pq);
         h.update(hybrid_ek);
+        h.update(hybrid_ct);
+        h.finalize()
+    }
+}
+
+pub struct ChempatPre {
+    hybrid_ek: Output<Sha3_256>,
+}
+
+impl ChempatPre {
+    pub fn new(ek: &EncapsulationKey) -> Self {
+        let mut h = Sha3_256::new();
+        h.update(ek.t.as_bytes().as_slice());
+        h.update(ek.pq_bytes.as_slice());
+
+        Self {
+            hybrid_ek: h.finalize(),
+        }
+    }
+}
+
+impl Combiner for ChempatPre {
+    fn combine(
+        &self,
+        ss_t: &[u8],
+        ct_t: &[u8],
+        _ek_t: &[u8],
+        ss_pq: &[u8],
+        ct_pq: &[u8],
+        _ek_pq: &[u8],
+    ) -> SharedSecret {
+        let mut h = Sha3_256::new();
+
+        h.update(ct_t);
+        h.update(ct_pq);
+        let hybrid_ct = h.finalize_reset();
+
+        h.update(ss_t);
+        h.update(ss_pq);
+        h.update(&self.hybrid_ek);
         h.update(hybrid_ct);
         h.finalize()
     }
@@ -242,9 +314,13 @@ pub fn decap<C: Combiner>(c: &C, dk: &DecapsulationKey, ct: &Ciphertext) -> Shar
 mod test {
     use super::*;
 
-    fn test_encap_decap<C: Combiner>(c: &C) {
+    fn key_pair() -> (DecapsulationKey, EncapsulationKey) {
         let mut rng = rand::thread_rng();
-        let (dk, ek) = generate(&mut rng);
+        generate(&mut rng)
+    }
+
+    fn test_encap_decap<C: Combiner>(c: &C, dk: DecapsulationKey, ek: EncapsulationKey) {
+        let mut rng = rand::thread_rng();
         let (ct, ss_e) = encap(c, &mut rng, &ek);
         let ss_d = decap(c, &dk, &ct);
         assert_eq!(ss_e, ss_d);
@@ -252,26 +328,79 @@ mod test {
 
     #[test]
     fn kitchen_sink() {
-        test_encap_decap(&KitchenSink);
+        let (dk, ek) = key_pair();
+        test_encap_decap(&KitchenSink, dk, ek);
+    }
+
+    #[test]
+    fn kitchen_sink_pre() {
+        let (dk, ek) = key_pair();
+        let kitchen_sink_pre = KitchenSinkPre::new(&ek);
+        test_encap_decap(&kitchen_sink_pre, dk, ek);
+    }
+
+    #[test]
+    fn kitchen_sink_pre_eq() {
+        let (dk, ek) = key_pair();
+        let kitchen_sink = KitchenSink;
+        let kitchen_sink_pre = KitchenSinkPre::new(&ek);
+
+        let mut rng = rand::thread_rng();
+        let (ct, ss_e) = encap(&kitchen_sink, &mut rng, &ek);
+        let ss_d = decap(&kitchen_sink_pre, &dk, &ct);
+        assert_eq!(ss_e, ss_d);
+
+        let mut rng = rand::thread_rng();
+        let (ct, ss_e) = encap(&kitchen_sink_pre, &mut rng, &ek);
+        let ss_d = decap(&kitchen_sink, &dk, &ct);
+        assert_eq!(ss_e, ss_d);
     }
 
     #[test]
     fn chempat() {
-        test_encap_decap(&Chempat);
+        let (dk, ek) = key_pair();
+        test_encap_decap(&Chempat, dk, ek);
+    }
+
+    #[test]
+    fn chempat_pre() {
+        let (dk, ek) = key_pair();
+        let chempat_pre = ChempatPre::new(&ek);
+        test_encap_decap(&chempat_pre, dk, ek);
+    }
+
+    #[test]
+    fn chempat_pre_eq() {
+        let (dk, ek) = key_pair();
+        let chempat = Chempat;
+        let chempat_pre = ChempatPre::new(&ek);
+
+        let mut rng = rand::thread_rng();
+        let (ct, ss_e) = encap(&chempat, &mut rng, &ek);
+        let ss_d = decap(&chempat_pre, &dk, &ct);
+        assert_eq!(ss_e, ss_d);
+
+        let mut rng = rand::thread_rng();
+        let (ct, ss_e) = encap(&chempat_pre, &mut rng, &ek);
+        let ss_d = decap(&chempat, &dk, &ct);
+        assert_eq!(ss_e, ss_d);
     }
 
     #[test]
     fn dhkem() {
-        test_encap_decap(&Dhkem);
+        let (dk, ek) = key_pair();
+        test_encap_decap(&Dhkem, dk, ek);
     }
 
     #[test]
     fn dhkem_half() {
-        test_encap_decap(&DhkemHalf);
+        let (dk, ek) = key_pair();
+        test_encap_decap(&DhkemHalf, dk, ek);
     }
 
     #[test]
     fn xwing() {
-        test_encap_decap(&XWing);
+        let (dk, ek) = key_pair();
+        test_encap_decap(&XWing, dk, ek);
     }
 }

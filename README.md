@@ -7,16 +7,22 @@ of my own devising.
 
 ## Benchmarks on my MacBook Pro (2021, M1 Pro)
 
-| Scheme        | Raw       | Encap     | Decap     |
-|---------------|-----------|-----------|-----------|
-| KitchenSink   | 3.9808 µs | 83.392 µs | 79.676 µs |
-| Chempat       | 4.2159 µs | 83.782 µs | 79.072 µs |
-| DHKEM         | 4.2104 µs | 83.138 µs | 79.057 µs |
-| XWing         | 238.76 ns | 79.485 µs | 74.618 µs |
-| DHKEM (half)  | 459.53 ns | 79.718 µs | 75.484 µs |
+| Scheme            | Raw       | Encap     | Decap     |
+|-------------------|-----------|-----------|-----------|
+| KitchenSink       | 3.9808 µs | 83.392 µs | 79.676 µs |
+| Chempat           | 4.2159 µs | 83.782 µs | 79.072 µs |
+| DHKEM             | 4.2104 µs | 83.138 µs | 79.057 µs |
+| XWing             | 238.76 ns | 79.485 µs | 74.618 µs |
+| DHKEM (half)      | 459.53 ns | 79.718 µs | 75.484 µs |
+| KitchenSink (pre) | 2.2274 µs | 81.564 µs | 76.077 µs |
+| Chempat (pre)     | 2.2114 µs | 80.783 µs | 76.148 µs |
 
 In other words:
 * None of the hash-in-everything variants are statistically different.
-* XWing looks about 5% faster than the hash-in-everything variants.
+* XWing looks ~5% faster than the hash-in-everything variants.
 * Re-arranging XWing to look more like DHKEM(X25519) + ML-KEM doesn't hurt
   performance.
+* Chempat in its optimal configuration (with the encapsulation keys pre-hashed)
+  is no better than KitchenSink with the keys at the front (so that pre-warmed
+  hash state can be re-used).
+* The pre-warmed variants are only ~3% faster than the just-hash-it variants.
