@@ -54,6 +54,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let chempat_pre = ChempatPre::new(&ek);
     bench_combiner(c, &chempat_pre, &dk, &ek, "chempat_pre");
+
+    let dhkem_pre = DhkemPre::new(&ek);
+    bench_combiner(c, &dhkem_pre, &dk, &ek, "dhkem_pre");
 }
 
 criterion_group!(benches, criterion_benchmark);

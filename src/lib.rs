@@ -170,18 +170,64 @@ impl Combiner for Dhkem {
     ) -> SharedSecret {
         let mut h = Sha3_256::new();
 
+        h.update(ek_t);
         h.update(ss_t);
         h.update(ct_t);
-        h.update(ek_t);
         let input_t = h.finalize_reset();
 
+        h.update(ek_pq);
         h.update(ss_pq);
         h.update(ct_pq);
-        h.update(ek_pq);
         let input_pq = h.finalize_reset();
 
         h.update(input_t);
         h.update(input_pq);
+        h.finalize()
+    }
+}
+
+// Stateful DHKEM-like derivation, with a pre-hashed public-key prefix for each algorithm
+pub struct DhkemPre {
+    prefix_t: Sha3_256,
+    prefix_pq: Sha3_256,
+}
+
+impl DhkemPre {
+    pub fn new(ek: &EncapsulationKey) -> Self {
+        let mut prefix_t = Sha3_256::new();
+        prefix_t.update(ek.t.as_bytes().as_slice());
+
+        let mut prefix_pq = Sha3_256::new();
+        prefix_pq.update(ek.pq_bytes.as_slice());
+
+        Self {
+            prefix_t,
+            prefix_pq,
+        }
+    }
+}
+
+impl Combiner for DhkemPre {
+    fn combine(
+        &self,
+        ss_t: &[u8],
+        ct_t: &[u8],
+        _ek_t: &[u8],
+        ss_pq: &[u8],
+        ct_pq: &[u8],
+        _ek_pq: &[u8],
+    ) -> SharedSecret {
+        let mut t = self.prefix_t.clone();
+        t.update(ss_t);
+        t.update(ct_t);
+
+        let mut pq = self.prefix_pq.clone();
+        pq.update(ss_pq);
+        pq.update(ct_pq);
+
+        let mut h = Sha3_256::new();
+        h.update(t.finalize());
+        h.update(pq.finalize());
         h.finalize()
     }
 }
@@ -390,6 +436,30 @@ mod test {
     fn dhkem() {
         let (dk, ek) = key_pair();
         test_encap_decap(&Dhkem, dk, ek);
+    }
+
+    #[test]
+    fn dhkem_pre() {
+        let (dk, ek) = key_pair();
+        let dhkem_pre = DhkemPre::new(&ek);
+        test_encap_decap(&dhkem_pre, dk, ek);
+    }
+
+    #[test]
+    fn dhkem_pre_eq() {
+        let (dk, ek) = key_pair();
+        let dhkem = Dhkem;
+        let dhkem_pre = DhkemPre::new(&ek);
+
+        let mut rng = rand::thread_rng();
+        let (ct, ss_e) = encap(&dhkem, &mut rng, &ek);
+        let ss_d = decap(&dhkem_pre, &dk, &ct);
+        assert_eq!(ss_e, ss_d);
+
+        let mut rng = rand::thread_rng();
+        let (ct, ss_e) = encap(&dhkem_pre, &mut rng, &ek);
+        let ss_d = decap(&dhkem, &dk, &ct);
+        assert_eq!(ss_e, ss_d);
     }
 
     #[test]

@@ -16,13 +16,15 @@ of my own devising.
 | DHKEM (half)      | 459.53 ns | 79.718 µs | 75.484 µs |
 | KitchenSink (pre) | 2.2274 µs | 81.564 µs | 76.077 µs |
 | Chempat (pre)     | 2.2114 µs | 80.783 µs | 76.148 µs |
+| DHKEM (pre)       | 2.4736 µs | 81.156 µs | 77.226 µs |
 
 In other words:
 * None of the hash-in-everything variants are statistically different.
 * XWing looks ~5% faster than the hash-in-everything variants.
 * Re-arranging XWing to look more like DHKEM(X25519) + ML-KEM doesn't hurt
-  performance.
+  performance much.
 * Chempat in its optimal configuration (with the encapsulation keys pre-hashed)
   is no better than KitchenSink with the keys at the front (so that pre-warmed
   hash state can be re-used).
-* The pre-warmed variants are only ~3% faster than the just-hash-it variants.
+* The pre-warmed variants are only ~3% faster than the just-hash-it variants,
+  with ML-KEM encap.
