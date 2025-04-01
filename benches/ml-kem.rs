@@ -1,5 +1,9 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use kem_combiners::*;
+use kem_combiners::{
+    combiners::*,
+    ml_kem::{self, DecapsulationKey, EncapsulationKey, NewMlKem},
+    Combiner,
+};
 
 fn bench_combiner<C: Combiner>(
     c: &mut Criterion,
@@ -9,7 +13,7 @@ fn bench_combiner<C: Combiner>(
     label: &str,
 ) {
     let mut rng = rand::thread_rng();
-    let (ct, ss) = kem_combiners::encap(combo, &mut rng, &ek);
+    let (ct, ss) = ml_kem::encap(combo, &mut rng, &ek);
 
     let ss_t = ss.as_slice();
     let ct_t = ct.t.as_bytes().as_slice();
@@ -26,20 +30,20 @@ fn bench_combiner<C: Combiner>(
 
     c.bench_function(&format!("{}_encap", label), |b| {
         b.iter(|| {
-            kem_combiners::encap(combo, &mut rng, &ek);
+            ml_kem::encap(combo, &mut rng, &ek);
         })
     });
 
     c.bench_function(&format!("{}_decap", label), |b| {
         b.iter(|| {
-            kem_combiners::decap(combo, &dk, &ct);
+            ml_kem::decap(combo, &dk, &ct);
         })
     });
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
-    let (dk, ek) = kem_combiners::generate(&mut rng);
+    let (dk, ek) = ml_kem::generate(&mut rng);
 
     // Stateless
     bench_combiner(c, &KitchenSink, &dk, &ek, "kitchen_sink");
@@ -49,13 +53,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_combiner(c, &XWing, &dk, &ek, "xwing");
 
     // Stateful
-    let kitchen_sink_pre = KitchenSinkPre::new(&ek);
+    let kitchen_sink_pre = KitchenSinkPre::new_ml_kem(&ek);
     bench_combiner(c, &kitchen_sink_pre, &dk, &ek, "kitchen_sink_pre");
 
-    let chempat_pre = ChempatPre::new(&ek);
+    let chempat_pre = ChempatPre::new_ml_kem(&ek);
     bench_combiner(c, &chempat_pre, &dk, &ek, "chempat_pre");
 
-    let dhkem_pre = DhkemPre::new(&ek);
+    let dhkem_pre = DhkemPre::new_ml_kem(&ek);
     bench_combiner(c, &dhkem_pre, &dk, &ek, "dhkem_pre");
 }
 

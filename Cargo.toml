@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+classic-mceliece-rust = { version = "3.1.0", features = ["mceliece6960119f"] }
 hybrid-array = { version = "0.2.3", features = ["extra-sizes"] }
 ml-kem = "0.2.1"
 rand = "0.8.5"
@@ -15,5 +16,5 @@ x25519-dalek = { version = "2.0.1", features = ["static_secrets"] }
 criterion = "0.5.1"
 
 [[bench]]
-name = "kem-combiners"
+name = "ml-kem"
 harness = false
