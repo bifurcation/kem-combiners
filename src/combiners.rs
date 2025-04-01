@@ -1,6 +1,18 @@
 use sha3::{digest::Output, Digest, Sha3_256};
 
-use crate::{Combiner, SharedSecret};
+use crate::hybrid::SharedSecret;
+
+pub trait Combiner {
+    fn combine(
+        &self,
+        ss_t: &[u8],
+        ct_t: &[u8],
+        ek_t: &[u8],
+        ss_pq: &[u8],
+        ct_pq: &[u8],
+        ek_pq: &[u8],
+    ) -> SharedSecret;
+}
 
 pub trait NewPre {
     fn new_pre(ek_t: &[u8], ek_pq: &[u8]) -> Self;

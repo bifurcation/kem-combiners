@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 classic-mceliece-rust = { version = "3.1.0", features = ["mceliece6960119f"] }
+generic-tests = "0.1.3"
 hybrid-array = { version = "0.2.3", features = ["extra-sizes"] }
 ml-kem = "0.2.1"
 rand = "0.8.5"
