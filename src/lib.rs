@@ -1,4 +1,5 @@
 pub mod combiners;
+pub mod mceliece;
 pub mod ml_kem;
 
 use sha3::{digest::Output, Sha3_256};

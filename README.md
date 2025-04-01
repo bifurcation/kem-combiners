@@ -5,7 +5,7 @@ A lot of the options CFRG is considering seem similar.  This repo is to get a
 feel for how big the differences are for some of the known contenders, and a few
 of my own devising.
 
-## Benchmarks on my MacBook Pro (2021, M1 Pro)
+## Benchmarks with ML-KEM on my MacBook Pro (2021, M1 Pro)
 
 | Scheme            | Raw       | Encap     | Decap     |
 |-------------------|-----------|-----------|-----------|
@@ -28,3 +28,22 @@ In other words:
   hash state can be re-used).
 * The pre-warmed variants are only ~3% faster than the just-hash-it variants,
   with ML-KEM encap.
+
+## Benchmarks with Classic McEliece on my MacBook Pro (2021, M1 Pro)
+
+| Scheme            | Raw       | Encap     | Decap     |
+|-------------------|-----------|-----------|-----------|
+| KitchenSink       | 1.6798 ms | 1.8242 ms | 63.926 ms |
+| Chempat           | 1.6788 ms | 1.8434 ms | 64.067 ms |
+| DHKEM             | 1.6904 ms | 1.8296 ms | 64.059 ms |
+| XWing             | 237.94 ns | 145.24 µs | 62.207 ms |
+| DHKEM (half)      | 460.10 ns | 145.50 µs | 62.613 ms |
+| KitchenSink (pre) | 681.72 ns | 145.49 µs | 62.233 ms |
+| Chempat (pre)     | 679.90 ns | 145.75 µs | 62.323 ms |
+| DHKEM (pre)       | 1.1589 µs | 146.01 µs | 62.233 ms |
+
+In other words:
+* Holy cow, these numbers are terrible!
+* However, pre-hashing the public keys does speed up encapsulation by about an
+  order of magnitude.
+* One pre-hashing scheme is as good as another.
